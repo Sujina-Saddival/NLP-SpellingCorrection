@@ -6,15 +6,13 @@ eps = 0.0001
 class UnsmoothedUnigramLM:
     def __init__(self, fname):
         self.freqs = {}
-        self.bifreqs = {}
+        self.uniwords = {}
+        self.uniwords = set(self.uniwords)
         for line in open(fname):
             tokens = line.split()
             for i, t in enumerate(tokens):
                 self.freqs[t] = self.freqs.get(t, 0) + 1
-
-                if(i + 1 < len(tokens)):
-                    bigram_key = t + " " + tokens[i+1]
-                    self.bifreqs[bigram_key] = self.bifreqs.get(bigram_key, 0) + 1
+                # self.uniwords.add(t[1])
 
         # Computing this sum once in the constructor, instead of every
         # time it's needed in log_prob, speeds things up
@@ -55,17 +53,15 @@ class UnsmoothedUnigramLM:
         # (This is not actually a problem for this language model, but
         # it can become an issue when we multiply together many
         # probabilities)
-        if first_word in self.bifreqs:
-            return math.log(self.freqs[first_word])/math.log(self.num_tokens)
+        if first_word in self.freqs and second_word in self.freqs:
+            return Decimal((self.freqs[word] + 1)/(self.num_tokens + self.num_types))
         else:
-            # This is a bit of a hack to get a float with the value of
-            # minus infinity for words that have probability 0
             return float("-inf")
 
     def in_vocab(self, word):
         return word in self.freqs
 
-    def check_probs(self, type):
+    def check_probs(self):
         # Hint: Writing code to check whether the probabilities you
         # have computed form a valid probability distribution is very
         # helpful, particularly when you start incorporating smoothing
@@ -77,25 +73,10 @@ class UnsmoothedUnigramLM:
         log_prob_value = float("InF")
         total_prob_value = Decimal()
         # Make sure the probability for each word is between 0 and 1
-        if (type == 1):
-            for w in self.freqs:
-                log_prob_value = self.log_prob_for_unigram(w)
-                total_prob_value = total_prob_value + log_prob_value
-                assert 0 - eps < log_prob_value < 1 + eps
-        elif (type == 2):
-            for w in self.freqs:
-                log_prob_value = self.log_prob_for_bigram(w)
-                total_prob_value = total_prob_value + log_prob_value
-                assert 0 - eps < math.exp(log_prob_value) < 1 + eps
-        elif (type == "interp"):
-            for w in self.freqs:
-                log_prob_value = self.log_prob(w)
-                total_prob_value = total_prob_value + log_prob_value
-                assert 0 - eps < math.exp(log_prob_value) < 1 + eps
-        else:
-            log_prob_value = self.log_prob(w)
+        for w in self.freqs:
+            log_prob_value = self.log_prob_for_unigram(w)
             total_prob_value = total_prob_value + log_prob_value
-            assert 0 - eps < math.exp(log_prob_value) < 1 + eps
+            assert 0 - eps < log_prob_value < 1 + eps
 
         # Make sure that the sum of probabilities for all words is 1
         # assert 1 - eps < \
@@ -115,12 +96,42 @@ def delete_edits(word):
 
     # "All edits that are one edit away from `word`."
     letters    = 'abcdefghijklmnopqrstuvwxyz'
-    splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
-    deletes    = [L + R[1:]               for L, R in splits if R]
-    inserts    = [L + c + R               for L, R in splits for c in letters]
-    transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]
-    replaces   = [L + c + R[1:]           for L, R in splits if R for c in letters]
-    return set(deletes + transposes + replaces + inserts)
+    charecter     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
+    deletion    = [L + R[1:]               for L, R in charecter if R]
+    insertion    = [L + c + R               for L, R in charecter for c in letters]
+    transposition = [L + R[1] + R[0] + R[2:] for L, R in charecter if len(R)>1]
+    substitution   = [L + c + R[1:]           for L, R in charecter if R for c in letters]
+
+    return set(deletion + transposition + substitution + insertion)
+    
+class UnsmoothedBigramLM:
+    def __init__(self, fname):
+        self.freqs = {}
+        self.bifreqs = {}
+        for line in open(fname):
+            tokens = line.split()
+            self.each_document_linestokens = tokens
+            for i, t in enumerate(tokens):
+                if(i + 1 < len(tokens)):
+                    bigram_key = t + " " + tokens[i+1]
+                    self.bifreqs[bigram_key] = self.bifreqs.get(bigram_key, 0) + 1
+
+    def check_probs(self):
+        log_prob_value = float("InF")
+        total_prob_value = Decimal()
+        # Make sure the probability for each word is between 0 and 1
+        for w in self.bifreqs:
+            log_prob_value = self.log_prob_for_bigram(w)
+            total_prob_value = total_prob_value + log_prob_value
+            assert 0 - eps < math.exp(log_prob_value) < 1 + eps
+
+        # Make sure that the sum of probabilities for all words is 1
+        # assert 1 - eps < \
+        #     sum([math.exp(log_prob_value) for w in self.freqs]) < \
+        #     1 + eps
+        assert 1 - eps < \
+           total_prob_value < \
+            1 + eps
 
 if __name__ == '__main__':
     import sys
@@ -130,18 +141,25 @@ if __name__ == '__main__':
 
     # n will be '1', '2' or 'interp' (but this starter code ignores
     # this)
-    # n = sys.argv[1]
-    n = 1
+    n = sys.argv[1]
+    # n = 1
 
     # The collection of sentences to make predictions for
-    # predict_corpus = sys.argv[2]
-    predict_corpus = "dev.txt"
+    predict_corpus = sys.argv[2]
+    # predict_corpus = "dev.txt"
 
     # Train the language model
-    lm = UnsmoothedUnigramLM(train_corpus)
+    if (n == 1):
+       lm = UnsmoothedUnigramLM(train_corpus)
+    elif (n == 2):
+        lm = UnsmoothedBigramLM(train_corpus)
+    elif (n == "interp"):
+        lm = UnsmoothedBigramLM(train_corpus)
+    else:
+        lm = UnsmoothedUnigramLM(train_corpus)
 
     # You can comment this out to run faster...
-    lm.check_probs(n)
+    lm.check_probs()
     
 
     for line in open(predict_corpus):

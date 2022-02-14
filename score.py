@@ -6,14 +6,15 @@ import sys
 #
 # $ python score.py OUTPUT_FILE KEYS_FILE
 
-# output_fname = sys.argv[1]
-output_fname = "dev.txt"
-# keys_fname = sys.argv[2]
-keys_fname = "dev.keys.txt"
+output_fname = sys.argv[1]
+# output_fname = "corpus.keys.txt"
+keys_fname = sys.argv[2]
+# keys_fname = "dev.keys.txt"
 
 # Read in the system output and keys
 output = [x.strip() for x in open(output_fname)]
 keys = [x.strip() for x in open(keys_fname)]
+print(output)
 
 if len(output) != len(keys):
     # If the length of the output and keys are not the same, something went
