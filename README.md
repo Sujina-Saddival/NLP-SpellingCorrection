@@ -54,3 +54,8 @@ lamda - 0.2
 Num correct:  237
 Total:  421
 Accuracy: 0.563
+
+lamda = 0.00001
+Num correct:  244
+Total:  421
+Accuracy: 0.58

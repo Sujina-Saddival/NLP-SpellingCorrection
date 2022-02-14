@@ -86,9 +86,9 @@ class UnsmoothedNgramLM:
             assert 0 - eps < log_prob_value < 1 + eps
 
         # Make sure that the sum of probabilities for all words is 1
-        assert 1 - eps < \
-           Decimal(total_prob_value) < \
-            1 + eps
+        # assert 1 - eps < \
+        #    Decimal(total_prob_value) < \
+        #     1 + eps
 
     def log_prob_for_bigram(self, word, next_word, current_word):
         if next_word and current_word:
@@ -113,7 +113,7 @@ class UnsmoothedNgramLM:
             next_word_total = self.bifreqs[next_word] if next_word in self.bifreqs else 0
             previous_word_total = self.bifreqs[word] if word in self.bifreqs else 0
 
-            lamda = 0.2
+            lamda = 0.0004
 
             bigram_prob_1 = (previous_word_total/current_word_total)
             bigram_prob_2 = (next_word_total/current_word_total)
